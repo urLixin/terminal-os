@@ -1,0 +1,5 @@
+{
+  "name": "Terminal OS Portfolio",
+  "description": "A minimalist hacker-style Linux terminal portfolio with interactive commands, boot sequence, and multiple themes.",
+  "requestFramePermissions": []
+}
