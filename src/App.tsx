@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BootSequence } from './components/BootSequence';
 import { LoginScreen } from './components/LoginScreen';
@@ -8,6 +8,7 @@ import { TopBar } from './components/layout/TopBar';
 import { Sidebar } from './components/layout/Sidebar';
 import { BottomBar } from './components/layout/BottomBar';
 import { Theme } from './types';
+import { ArrowLeft } from 'lucide-react';
 
 export default function App() {
   const [stage, setStage] = useState<'boot' | 'login' | 'os'>('boot');
@@ -15,6 +16,9 @@ export default function App() {
   const [time, setTime] = useState(new Date());
   const [isTerminalOpen, setIsTerminalOpen] = useState(true);
   const [terminalCommand, setTerminalCommand] = useState<string | undefined>(undefined);
+  const [terminalMode, setTerminalMode] = useState<'main' | 'utility'>('main');
+  const [utilityCommand, setUtilityCommand] = useState<string | undefined>(undefined);
+  const startTime = useRef(new Date());
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -28,23 +32,25 @@ export default function App() {
     blue: 'text-blue-500 border-blue-500/30',
   };
 
-  const bgColors = {
-    green: 'bg-green-500/5',
-    pink: 'bg-pink-500/5',
-    purple: 'bg-purple-500/5',
-    blue: 'bg-blue-500/5',
-  };
-
   const handleLogin = React.useCallback(() => {
     setStage('os');
   }, []);
 
   const handleNodeClick = (id: string) => {
+    if (id.startsWith('utility:')) {
+      const cmd = id.split(':')[1];
+      setUtilityCommand(cmd);
+      setTerminalMode('utility');
+      setIsTerminalOpen(true);
+      return;
+    }
+
     if (id === 'center') {
       setTerminalCommand(undefined);
     } else {
       setTerminalCommand(id);
     }
+    setTerminalMode('main');
     setIsTerminalOpen(true);
   };
 
@@ -75,22 +81,35 @@ export default function App() {
                 theme={theme} 
                 onThemeChange={setTheme} 
                 onNavigate={handleNodeClick} 
+                startTime={startTime.current}
               />
 
               <AnimatePresence mode="wait">
                 {isTerminalOpen ? (
                   <motion.div
-                    key="terminal"
+                    key={terminalMode === 'utility' ? `utility-${utilityCommand}` : 'main-terminal'}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="flex-1 flex flex-col"
+                    className="flex-1 flex flex-col gap-2"
                   >
+                    {terminalMode === 'utility' && (
+                      <div className="flex justify-start">
+                        <button 
+                          onClick={() => setTerminalMode('main')}
+                          className="flex items-center gap-2 px-3 py-1 bg-current/10 border border-current/30 rounded text-xs hover:bg-current/20 transition-colors"
+                        >
+                          <ArrowLeft size={12} />
+                          Back to Main Terminal
+                        </button>
+                      </div>
+                    )}
                     <Terminal 
                       theme={theme} 
                       onThemeChange={setTheme} 
                       onClose={() => setIsTerminalOpen(false)}
-                      initialCommand={terminalCommand}
+                      initialCommand={terminalMode === 'utility' ? utilityCommand : terminalCommand}
+                      startTime={startTime.current}
                     />
                   </motion.div>
                 ) : (

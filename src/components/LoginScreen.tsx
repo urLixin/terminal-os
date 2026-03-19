@@ -1,70 +1,106 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface LoginScreenProps {
   onLogin: () => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
-  const [status, setStatus] = useState('Authenticating user...');
-  const [showPrompt, setShowPrompt] = useState(false);
+  const [username, setUsername] = useState('');
+  const [status, setStatus] = useState('SYSTEM BOOT COMPLETE');
+  const [showInput, setShowInput] = useState(false);
+  const targetUsername = 'wLixin';
 
   useEffect(() => {
-    const t1 = setTimeout(() => setStatus('User: WLixin'), 500);
-    const t2 = setTimeout(() => setStatus('Access granted.'), 1000);
-    const t3 = setTimeout(() => setShowPrompt(true), 1200);
+    const t1 = setTimeout(() => setStatus('INITIALIZING AUTH SERVICE...'), 800);
+    const t2 = setTimeout(() => {
+      setStatus('READY');
+      setShowInput(true);
+    }, 1600);
     
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
-      clearTimeout(t3);
     };
   }, []);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        onLogin();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onLogin]);
+    if (showInput) {
+      let currentText = '';
+      let index = 0;
+      
+      const typeChar = () => {
+        if (index < targetUsername.length) {
+          currentText += targetUsername[index];
+          setUsername(currentText);
+          index++;
+          setTimeout(typeChar, 150 + Math.random() * 100);
+        } else {
+          // Finished typing, wait a bit and login
+          setTimeout(() => {
+            setStatus('ACCESS GRANTED');
+            setTimeout(onLogin, 800);
+          }, 500);
+        }
+      };
+
+      setTimeout(typeChar, 500);
+    }
+  }, [showInput, onLogin]);
 
   return (
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 1.05 }}
-      className="fixed inset-0 bg-black flex items-center justify-center font-mono z-40"
+      className="fixed inset-0 bg-black flex items-center justify-center font-mono z-40 overflow-hidden"
     >
-      <div className="text-center space-y-4">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-green-500 text-xl md:text-2xl"
-        >
-          {status}
-        </motion.div>
-        
-        {showPrompt && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
+      <div className="max-w-md w-full p-8 space-y-8">
+        <div className="space-y-2">
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-green-500 text-sm opacity-50"
           >
-            <button
-              onClick={onLogin}
-              className="px-8 py-3 border border-green-500 text-green-500 hover:bg-green-500 hover:text-black transition-all duration-300 animate-pulse"
-            >
-              PRESS ENTER TO CONTINUE
-            </button>
-            <p className="text-green-500/50 text-xs">
-              Session ID: {Math.random().toString(36).substring(7).toUpperCase()}
-            </p>
-          </motion.div>
-        )}
+            {status}
+          </motion.p>
+          
+          <AnimatePresence>
+            {showInput && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-4"
+              >
+                <div className="flex items-center gap-2 text-green-500 text-xl">
+                  <span>login:</span>
+                  <div className="flex-1 text-green-500">
+                    {username}
+                    <motion.span
+                      animate={{ opacity: [1, 0] }}
+                      transition={{ duration: 0.8, repeat: Infinity }}
+                      className="inline-block w-2 h-5 bg-green-500 ml-1 align-middle"
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <div className="pt-12 flex justify-between items-end">
+          <div className="space-y-1">
+            <p className="text-[10px] text-green-500/30 uppercase tracking-widest">Secure Terminal Access</p>
+            <p className="text-[10px] text-green-500/30">Encryption: AES-256-GCM</p>
+          </div>
+          <p className="text-[10px] text-green-500/30">
+            Node: {Math.random().toString(36).substring(7).toUpperCase()}
+          </p>
+        </div>
       </div>
+      
+      {/* CRT Scanline Effect */}
+      <div className="crt-overlay" />
     </motion.div>
   );
 };

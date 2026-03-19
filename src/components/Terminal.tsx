@@ -9,6 +9,7 @@ interface TerminalProps {
   onThemeChange: (theme: Theme) => void;
   onClose: () => void;
   initialCommand?: string;
+  startTime: Date;
 }
 
 interface HistoryItem {
@@ -17,20 +18,44 @@ interface HistoryItem {
   timestamp: string;
 }
 
-export const Terminal: React.FC<TerminalProps> = ({ theme, onThemeChange, onClose, initialCommand }) => {
+export const Terminal: React.FC<TerminalProps> = ({ theme, onThemeChange, onClose, initialCommand, startTime }) => {
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [currentDir, setCurrentDir] = useState('/home/wlixin');
+  const [showIdleHint, setShowIdleHint] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const COMMANDS = [
+    'about', 'skills', 'projects', 'certs', 'contact',
+    'neofetch', 'theme', 'ls', 'cd', 'cat', 'clear', 'exit',
+    'whoami', 'uptime', 'ping', 'ssh', 'github', 'curl', 'htop', 'motd', 'log', 'blog', 'resume', 'pwd'
+  ];
+
+  const resetIdleTimer = () => {
+    setShowIdleHint(false);
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = setTimeout(() => {
+      setShowIdleHint(true);
+    }, 8000);
+  };
+
+  useEffect(() => {
+    resetIdleTimer();
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, [input]);
 
   const { handleCommand } = useTerminalCommands(
     onThemeChange,
     setCurrentDir,
     currentDir,
-    setHistory
+    setHistory,
+    startTime
   );
 
   const themeColors = {
@@ -68,9 +93,16 @@ export const Terminal: React.FC<TerminalProps> = ({ theme, onThemeChange, onClos
   }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    resetIdleTimer();
     if (e.key === 'Enter') {
       handleCommand(input, false, setCommandHistory, setHistoryIndex);
       setInput('');
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      const matches = COMMANDS.filter(c => c.startsWith(input.toLowerCase()));
+      if (matches.length === 1) {
+        setInput(matches[0]);
+      }
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (historyIndex < commandHistory.length - 1) {
@@ -148,20 +180,35 @@ export const Terminal: React.FC<TerminalProps> = ({ theme, onThemeChange, onClos
         </AnimatePresence>
 
         {/* Input Line */}
-        <div className="flex items-center gap-2">
-          <span className="text-blue-400">wlixin@portfolio</span>
-          <span className="opacity-50">:</span>
-          <span className="text-purple-400">{currentDir}</span>
-          <span className="opacity-50">$</span>
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="flex-1 bg-transparent border-none outline-none text-current"
-            autoFocus
-          />
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-blue-400">wlixin@portfolio</span>
+            <span className="opacity-50">:</span>
+            <span className="text-purple-400">{currentDir}</span>
+            <span className="opacity-50">$</span>
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="flex-1 bg-transparent border-none outline-none text-current"
+              autoFocus
+            />
+          </div>
+          
+          <AnimatePresence>
+            {showIdleHint && (
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.4 }}
+                exit={{ opacity: 0 }}
+                className="text-[10px] italic pl-4"
+              >
+                Hint: Type 'help' to see available commands...
+              </motion.p>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
